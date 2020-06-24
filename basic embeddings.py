@@ -72,9 +72,45 @@ def cal_rank(matrix, length, N):
             # print("ranked_matrix[" + str(i) + "," + str(j) + "] = " + str(_num_lower) + "/" + str(_num_examined))
     return ranked_matrix
 
+def s(ranked_matrix, start, end):
+    _sum = 0
+    for i in range(start, end):
+        for j in range(start, end):
+            _sum += ranked_matrix[i, j]
+    return _sum
+def a(start, end):
+    return (end-start + 1) ** 2
+def D(matrix, end, i):
+    sum_sk = s(ranked_matrix, 1, i) + s(ranked_matrix, i, end)
+    sum_ak = a(1, i) + a(i + 1, end)
+    temp = sum_sk / sum_ak
+    return temp
+
+
+# def cal_m(matrix, length):
+#     d_n = []
+#     for i in range(1, length):
+#         _temp =
+
+
+def cluster(ranked_matrix, start, end):
+    # divide into 2 pieces
+    point_2 = start
+    max = 0
+    log = []
+    for i in range(start+1, end-1):
+        temp = D(ranked_matrix, end, i)
+        log.append([i, temp])
+        if temp > max:
+            max = temp
+            point_2 = i
+    print("half point is: " + str(point_2) + ", max value of D is " + str(max))
+    print("Log: " + str(log))
+    return point_2  # return boundary
+
+
 # Just some code to print debug information to stdout
 np.set_printoptions(threshold=100)
-
 logging.basicConfig(format='%(asctime)s - %(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S',
                     level=logging.INFO,
@@ -104,7 +140,7 @@ for sentence, embedding in zip(sentences, sentence_embeddings):
     # print("Sentence:", sentence)
     # print("Embedding:", embedding)
     embeddings.append(embedding)
-    print("")
+    # print("")
 
 # vec1 = np.array(embeddings[0])
 # vec2 = np.array(embeddings[1])
@@ -112,9 +148,27 @@ for sentence, embedding in zip(sentences, sentence_embeddings):
 # print("distance: " + str(distance))
 # print("cal_sim_matrix(embeddings)")
 # print(cal_cos_sim_matrix(embeddings))
-print("ranked matrix: ")
-print(cal_rank(cal_cos_sim_matrix(embeddings), len(embeddings), 11))
 
+ranked_matrix = cal_rank(cal_cos_sim_matrix(embeddings), len(embeddings), 11)
+# print("ranked matrix: ")
+# print(ranked_matrix)
+divide_into_2 = cluster(ranked_matrix, 0, len(embeddings))
+if divide_into_2 - 0 > len(embeddings) - divide_into_2:
+    divide_into_3 = cluster(ranked_matrix, 0, divide_into_2)
+else:
+    divide_into_3 = cluster(ranked_matrix, divide_into_2, len(embeddings))
 
+result = []
+if divide_into_2 > divide_into_3 :
+    result.append(divide_into_3)
+    result.append(divide_into_2)
+else:
+    result.append(divide_into_2)
+    result.append(divide_into_3)
+print("divide result is: " + str(result))
+# cluster(ranked_matrix, 4, len(embeddings))
+# cluster(ranked_matrix, 4, 15)
+# cluster(ranked_matrix, 5, 15)
+# cluster(ranked_matrix, 7, 15)
 
 
