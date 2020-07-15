@@ -1,3 +1,9 @@
+# HOW TO USE THE CODE
+0. You need these packages: SentenceTransformer, LoggingHandler, numpy, logging, copy, statistics
+1. Unzip the folder raw_conversation in the orginal place.
+2. Run python code.
+3. Segment points are stored at file file_result.txt.
+
 # C99-SentenceBert
 For linear text segmentation
 
@@ -14,7 +20,7 @@ In this repo, I implemented C99 algorithm.
   
    Notice the contrast has been improved significantly currently. In this repo, I set mask size = 11 and save values of r(x) into matrix: ranked_matrix. r(x) = number of elements with a lower value / number of elements examined.
 
-4. (This part is different from Freddy' paper).
+4. VERSION 1(This part is different from Freddy' paper).
 
     In his paper, the number of divided segments is m. m = u + 1.2* v**(1/2). u is mean of gadient od D(n) and v is variance of D(n). D(n) means inside dencity of n segments. D(n) = sum of m number of sk / sum of m number of ak. Sk refers to the sum of rank values in one segment and a(start, end) = (end - start +1) ** 2. Optimal value of m occurs when gradient of D(n) decreases greatly.
     
@@ -23,3 +29,6 @@ In this repo, I implemented C99 algorithm.
     In his paper, optimal value of segments should be n. 
     
     But I found it boring to perform so much steps. Since the data of mine is short conversation, I decided to set n=3.
+
+5. VERSION 2 （same as Freddy）
+    The value of segments are calculated automatically.
