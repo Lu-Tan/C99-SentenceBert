@@ -9,6 +9,114 @@ Function: Segment files into 3 segments and log boundary positions into file.
 from sentence_transformers import SentenceTransformer, LoggingHandler
 import numpy as np
 import logging
+import copy
+import statistics
+
+
+# import matplotlib.pyplot as plt
+
+
+class Division:
+    """
+    a division by c99
+    """
+    Divisions = []
+    Densitys = []
+    Delta = []
+    Matrix = None
+    Length = 0
+    Best_Division = 0
+
+    def __init__(self, boundary_points, matrix=None):
+        # boundary_points is a tuple
+
+        if matrix is not None:
+            self.initDivision()
+
+        if Division.Matrix is None:
+            Division.Matrix = matrix
+            Division.Length = matrix.shape[0]
+        self.boundary_points = boundary_points
+        self.density = self.cal_density(boundary_points)
+
+        Division.Divisions.append(self)
+        Division.Densitys.append(self.density)
+
+    def initDivision(self):
+        Division.Divisions = []
+        Division.Densitys = []
+        Division.Delta = []
+        Division.Matrix = None
+        Division.Length = 0
+        Division.Best_Division = 0
+
+    def cal_density(self, boundary_points):
+        sum_s = sum_a = 0
+        for k in range(len(boundary_points) - 1):
+            start, end = boundary_points[k], boundary_points[k + 1]
+            for i in range(start, end):
+                for j in range(start, end):
+                    sum_s += Division.Matrix[i, j]
+            sum_a = sum_a + (end - start) ** 2
+        return sum_s / sum_a
+
+    def find_next_division(self):
+        new_d = -999
+        new_bp = self.boundary_points
+
+        for i in range(Division.Length):
+            if i in self.boundary_points:
+                # do nothing
+                continue
+
+            # add i into boundary_points
+            bps = list(self.boundary_points)
+            bps.append(i)
+            bps.sort()
+            temp_bp = tuple(bps)
+            temp_d = self.cal_density(temp_bp)
+
+            if temp_d > new_d:
+                new_d = temp_d
+                new_bp = temp_bp
+
+        return Division(new_bp)
+
+    def find_best_division(self):
+        Ds = Division.Densitys
+        delta = []
+        for i in range(len(Ds) - 1):
+            delta.append(Ds[i + 1] - Ds[i])
+        Division.Delta = delta
+        # # # smooth
+        # mask = [1, 2, 4, 2, 1]
+        #
+        # delta = np.convolve(mask, delta, 'same')
+
+        delta_delta = []
+        for i in range(len(delta) - 1):
+            delta_delta.append(delta[i + 1] - delta[i])
+        b = delta_delta.index(min(delta_delta)) + 2
+        Division.Best_Division = b
+        return Division.Divisions[b]
+
+    def save_to_file(self):
+        # todo
+        pass
+
+    def __str__(self):
+        # message for 'print'
+        # print("boundary points : ", end='')
+        # print(self.boundary_points)
+        # print("all delta Densitys : ", end='')
+        # print(Division.Delta)
+        # print("best division times is %d" % Division.Best_Division)
+        print(Division.Best_Division)
+        print(Division.Length)
+        print(Division.Best_Division / Division.Length)
+
+        # plt.plot(Division.Densitys)
+        return "division %d" % (len(self.boundary_points) - 1)
 
 
 def initialize():
@@ -18,6 +126,7 @@ def initialize():
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO,
                         handlers=[LoggingHandler()])
+
 
 def cal_Euclidean_sim_matrix(embeddings):
     """
@@ -33,7 +142,7 @@ def cal_Euclidean_sim_matrix(embeddings):
             vec2 = np.array(embeddings[j])
             # distance = np.sqrt(np.sum(np.square(vec1 - vec2)))
             sim_matrix[i, j] = np.sqrt(np.sum(np.square(vec1 - vec2)))
-            sim_matrix[j,i] = sim_matrix[i,j]
+            sim_matrix[j, i] = sim_matrix[i, j]
     return sim_matrix
 
 
@@ -72,9 +181,9 @@ def cal_rank(matrix, length, N):
             # print("i,j = " + str(i) + ", " + str(j))
             # count all legal neighbours
             _num_examined, _num_lower = 0, 0
-            for x in range(int(i - (N-1) / 2), int(i + (N-1) / 2)+1):
-                for y in range(int(j - (N-1)/2), int(j + (N-1)/2)+1):
-                    if 0 <= x <= length-1 and 0 <= y <= length - 1 and ( x!=i or y!=j ):
+            for x in range(int(i - (N - 1) / 2), int(i + (N - 1) / 2) + 1):
+                for y in range(int(j - (N - 1) / 2), int(j + (N - 1) / 2) + 1):
+                    if 0 <= x <= length - 1 and 0 <= y <= length - 1 and (x != i or y != j):
                         _num_examined += 1
                         if _value > matrix[x, y]:
                             _num_lower += 1
@@ -82,41 +191,6 @@ def cal_rank(matrix, length, N):
             ranked_matrix[i, j] = _num_lower / _num_examined
             # print("ranked_matrix[" + str(i) + "," + str(j) + "] = " + str(_num_lower) + "/" + str(_num_examined))
     return ranked_matrix
-
-
-def s(ranked_matrix, start, end):
-    _sum = 0
-    for i in range(start, end):
-        for j in range(start, end):
-            _sum += ranked_matrix[i, j]
-    return _sum
-
-
-def a(start, end):
-    return (end-start + 1) ** 2
-
-
-def D(ranked_matrix, end, i):
-    sum_sk = s(ranked_matrix, 1, i) + s(ranked_matrix, i, end)
-    sum_ak = a(1, i) + a(i + 1, end)
-    temp = sum_sk / sum_ak
-    return temp
-
-
-def cluster(ranked_matrix, start, end):
-    # divide into 2 pieces
-    point_2 = start
-    max = 0
-    log = []
-    for i in range(start+1, end-1):
-        temp = D(ranked_matrix, end, i)
-        log.append([i, temp])
-        if temp > max:
-            max = temp
-            point_2 = i
-    # print("half point is: " + str(point_2) + ", max value of D is " + str(max))
-    # print("Log: " + str(log))
-    return point_2  # return boundary
 
 
 def log_result(result):
@@ -141,32 +215,42 @@ def segmente_one_file(model, filename):
 
     # calculate ranked_matrix from embeddings[]
     ranked_matrix = cal_rank(cal_cos_sim_matrix(embeddings), len(embeddings), 11)
-    divide_into_2 = cluster(ranked_matrix, 0, len(embeddings))
-    if divide_into_2 - 0 > len(embeddings) - divide_into_2:
-        divide_into_3 = cluster(ranked_matrix, 0, divide_into_2)
-    else:
-        divide_into_3 = cluster(ranked_matrix, divide_into_2, len(embeddings))
-
-    # log result[] as boundaries
-    result = []
-    if divide_into_2 > divide_into_3:
-        result.append(divide_into_3)
-        result.append(divide_into_2)
-    else:
-        result.append(divide_into_2)
-        result.append(divide_into_3)
-    # print("divide result is: " + str(result))
+    matrix = ranked_matrix
+    division = Division((0, matrix.shape[0]), matrix)
+    for i in range(int(matrix.shape[0]/2)):
+        division = division.find_next_division()
+    best_division = division.find_best_division()
+    print(best_division)
+    # dD = dD[0:b]
+    # u = statistics.mean(dD)
+    # v = statistics.stdev(dD)
+    # m = u + 1.2*v
+    # divide_into_2 = cluster(ranked_matrix, 0, len(embeddings))
+    # if divide_into_2 - 0 > len(embeddings) - divide_into_2:
+    #     divide_into_3 = cluster(ranked_matrix, 0, divide_into_2)
+    # else:
+    #     divide_into_3 = cluster(ranked_matrix, divide_into_2, len(embeddings))
+    #
+    # # log result[] as boundaries
+    # result = []
+    # if divide_into_2 > divide_into_3:
+    #     result.append(divide_into_3)
+    #     result.append(divide_into_2)
+    # else:
+    #     result.append(divide_into_2)
+    #     result.append(divide_into_3)
+    # # print("divide result is: " + str(result))
 
     # log boundaries of curret file into "file_result.txt"
-    log_result(result)
-    print("Boundary points of " + filename + " are " + str(result))
+    log_result(best_division.boundary_points)
+    # print("Boundary points of " + filename + " are " + str(result))
 
 
 def main():
     initialize()
     # Load Sentence model (based on BERT) from URL
     model = SentenceTransformer('bert-base-nli-mean-tokens')
-    for i in range(1, 154):
+    for i in range(1, 100):
         i = '%03d' % i
         filename = 'raw_conversation/' + 'high_' + str(i)
         # print(filename)
@@ -174,4 +258,3 @@ def main():
 
 
 main()
-
